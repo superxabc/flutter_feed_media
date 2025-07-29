@@ -32,7 +32,6 @@ class _AudioIndicatorState extends State<AudioIndicator> with SingleTickerProvid
       child: GestureDetector(
         onTap: () {
           // TODO: Implement navigation to audio/music details page
-          print('Tapped on audio indicator');
         },
         child: Container(
           width: 50,

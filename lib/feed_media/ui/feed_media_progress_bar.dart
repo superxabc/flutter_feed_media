@@ -13,6 +13,8 @@ class FeedMediaProgressBar extends StatefulWidget {
 class _FeedMediaProgressBarState extends State<FeedMediaProgressBar> {
   Duration _currentPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
+  bool _isDragging = false; // New state variable
+  double _dragValue = 0.0; // Store value during drag
 
   @override
   void initState() {
@@ -43,18 +45,27 @@ class _FeedMediaProgressBarState extends State<FeedMediaProgressBar> {
 
     return SliderTheme(
       data: SliderTheme.of(context).copyWith(
-        trackHeight: 2.0,
+        trackHeight: _isDragging ? 4.0 : 2.0, // Dynamic track height
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
-        overlayShape: SliderComponentShape.noOverlay,
+        overlayShape: const RoundSliderOverlayShape(overlayRadius: 12.0),
         activeTrackColor: Colors.red,
         inactiveTrackColor: Colors.white.withOpacity(0.5),
         thumbColor: Colors.red,
       ),
       child: Slider(
-        value: progress,
+        value: _isDragging ? _dragValue : progress, // Use dragValue during drag
         onChanged: (value) {
+          setState(() {
+            _isDragging = true;
+            _dragValue = value;
+          });
+        },
+        onChangeEnd: (value) {
           final seekTo = _totalDuration * value;
           widget.controller.seekTo(seekTo);
+          setState(() {
+            _isDragging = false;
+          });
         },
       ),
     );
