@@ -17,3 +17,8 @@ export 'feed_media/models/feed_media_model.dart';
 
 // Export providers
 export 'feed_media/providers/playback_controller.dart';
+
+// Export new waterfall view components
+export 'feed_water/ui/feed_water_view.dart';
+export 'feed_water/models/feed_water_model.dart';
+export 'feed_water/providers/feed_water_provider.dart';

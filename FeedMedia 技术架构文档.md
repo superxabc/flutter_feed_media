@@ -10,30 +10,41 @@
 
 3.  **分层架构 (Layered Architecture)**: 组件严格划分为三个层次，各层之间单向依赖，确保数据流清晰可控。
 
+4.  **模块化与独立性**: 新增功能模块（如瀑布流组件 `FeedWaterView`）应作为独立的子系统进行设计和实现，拥有自己的数据模型、数据层和状态管理，以减少与核心模块的耦合，提高可维护性和可扩展性。
+
 ## 二、分层架构详解
 
 ```mermaid
 graph TD
-    subgraph 表现层 (UI Layer)
+    subgraph 沉浸式媒体流 (FeedMedia Module)
         A(FeedMediaPageView)
         B(FeedMediaItemPage)
         C(FeedMediaOverlayUI)
     end
 
+    subgraph 瀑布流模块 (FeedWater Module)
+        F(FeedWaterView)
+    end
+
     subgraph 状态逻辑层 (State & Logic Layer)
         D(feedMediaProvider)
         E(playbackControllerProvider)
+        G(feedWaterProvider)
     end
 
     subgraph 数据层 (Data Layer)
-        F(FeedMediaRepository)
+        H(FeedMediaRepository)
+        I(FeedWaterRepository)
     end
 
     A --> D
     A --> E
     B --> E
     C --> E
-    D --> F
+    D --> H
+
+    F --> G
+    G --> I
 ```
 
 -   **1. 表现层 (UI Layer)**: 负责UI的渲染和用户事件的捕获。此层是“被动”的，它通过监听状态层的变化来更新视图，并将用户交互事件传递给状态逻辑层进行处理。核心组件包括 `FeedMediaPageView`, `FeedMediaItemPage` 等。
@@ -50,6 +61,9 @@ graph TD
 -   **`feedMediaProvider`**: **[状态逻辑层]** 媒体流数据的状态管理器，负责分页加载、数据缓存等核心业务逻辑。
 -   **`playbackControllerProvider`**: **[状态逻辑层]** 全局播放控制器，确保在任何时候只有一个视频在播放。
 -   **`FeedMediaRepository`**: **[数据层]** 数据源的唯一入口，为状态逻辑层提供统一、干净的数据接口。
+-   **`FeedWaterView`**: **[UI层]** 瀑布流内容的顶层渲染容器，负责组合瀑布流布局和各项卡片。
+-   **`feedWaterProvider`**: **[状态逻辑层]** 瀑布流数据和状态的管理，负责数据的加载、分页和状态更新。
+-   **`FeedWaterRepository`**: **[数据层]** 瀑布流数据的数据源接口，提供瀑布流数据的获取方法。
 
 ## 四、未来技术架构演进路线
 
@@ -67,6 +81,7 @@ graph TD
   1.  **高级缓存策略**: 引入专门的 `CacheManager`，实现更精细的视频预加载和淘汰策略（如 LRU 算法），而不仅仅是依赖播放器自带的缓存。
   2.  **性能监控 SDK**: 设计一个轻量级的性能监控服务 (`PerformanceMonitor`)，在播放链路的关键节点（如首帧渲染、播放卡顿）进行数据埋点和上报。
   3.  **渲染优化**: 探索对关键动画（如点赞动画）使用 `CustomPainter` 进行绘制，以减少 Widget 重建，获得更优的性能。
+  4.  **瀑布流组件增强**: 优化 `FeedWaterView` 的性能和功能，例如支持下拉刷新、自定义加载更多指示器等。
 
 ### 阶段三：自动化与质量保障
 - **目标**: 建立完善的自动化测试体系，保障代码质量和迭代速度。
