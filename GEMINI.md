@@ -1,163 +1,79 @@
 # GEMINI.md - Flutter FeedMedia 工程指导文档
 
-本文档旨在为 Flutter FeedMedia 项目中的组件开发提供工程指导。它概述了项目的核心功能、技术架构、约定和优化策略，以确保开发过程的一致性、高质量和高性能。
-
 ## 1. 项目概述
 
-Flutter FeedMedia 项目旨在构建一个高度沉浸式、可滚动的媒体流（视频/图片）组件，类似于主流内容平台。它优先考虑流畅的用户体验、高效的资源管理和可扩展性。
+本文档旨在为 Flutter FeedMedia 项目的开发和维护提供高级别的工程指导，概述了项目的核心功能、技术架构和关键约定。
 
-## 2. 核心功能
+## 2. 快速上手 (Getting Started)
 
--   **可滚动内容流**: 视频和图片内容的无缝垂直滚动。
--   **视频播放**: 可见时自动播放，滑出时自动暂停，**全屏点击区域触发播放/暂停，暂停时显示播放/暂停图标，播放时隐藏**，长按功能弹窗，明确的资源释放。
--   **图片显示**: 支持视频/图片混合流，支持多张图片左右滑动切换，**并带有平滑动画的指示器**，不支持手势放大缩小。
--   **懒加载**: 到达流末尾时自动分页和数据加载。
--   **交互占位符**: 预定义点赞、评论、分享功能的区域，已实现UI占位符。
--   **信息展示**: 视频标题、描述、可点击的话题/关联内容。
--   **音频指示器**: 视频播放时的音量指示器。
--   **进度条**: 底部进度条，暂停时常显，播放时隐藏，**支持手势拖动修改进度，拖动时高度增加，手势结束恢复正常高度**。
--   **错误处理**: 优雅地处理网络和加载失败。
--   **长按功能**: **长按图片和视频都会触发不同的操作弹窗，并根据媒体类型显示不同的菜单。**
+### 2.1 环境要求
+- Flutter SDK: 版本 >= 3.5.4
+- Dart SDK: 版本 >= 3.0.0
 
-## 3. 技术栈与约定
+### 2.2 安装与运行
+1.  **获取依赖**: 在项目根目录下运行，以安装所有必需的依赖包。
+    ```bash
+    flutter pub get
+    ```
+2.  **运行示例**: 本组件的完整功能示例已集成在 `nummate_app` 项目中。请切换到该目录并运行。
+    ```bash
+    cd ../nummate_app
+    flutter run
+    ```
 
-### 3.1 核心技术
+## 3. 核心功能
 
-| 模块           | 技术/库                               | 说明                                                              |
+-   **混合媒体流**: 支持视频和图片内容的无缝垂直滚动。
+-   **智能视频播放**: 可见时自动播放，滑出时自动暂停。全屏单击可切换播放/暂停状态，双击可点赞，长按可弹出功能菜单。
+-   **图片浏览**: 支持多图左右滑动，并带有动画指示器。
+-   **进度条**: 播放时显示细线进度，暂停时显示可拖拽的圆球，交互简洁直观。
+-   **完整的用户交互**: 提供带动画和状态管理的关注、点赞等社交按钮。
+-   **健壮性**: 优雅地处理网络和加载错误，并通过优化的事件处理机制解决手势冲突。
+
+## 4. 架构原则与分层
+
+1.  **分层架构 (Layered Architecture)**: 组件严格划分为**表现层 (UI)**、**状态逻辑层 (State & Logic)** 和 **数据层 (Data)**。各层单向依赖，确保逻辑清晰、易于维护。
+2.  **单一职责 (SRP)**: 每个组件或类只负责一项明确的功能。例如，UI组件只负责渲染和事件派发，业务逻辑完全由状态逻辑层的 `Notifier` 处理。
+3.  **依赖倒置 (DIP)**: 通过 `Riverpod` 实现依赖注入，高层模块依赖于抽象（`Provider`）而非具体实现，这使得组件高度可测试和可扩展。
+
+## 5. 技术栈与约定
+
+| 模块           | 核心技术/库                               | 说明                                                              |
 | :--------------- | :----------------------------------------------- | :----------------------------------------------------------------- |
-| 视频播放       | `better_player`                                  | `better_player` 更适合高级功能，已禁用默认UI。
-| 图片显示       | `photo_view` + `cached_network_image` + `carousel_slider` + `dots_indicator` | `cached_network_image` 用于缓存，`photo_view` 用于展示单张图片，`carousel_slider` 用于多图滑动，`dots_indicator` 用于动画指示器。
-| 状态管理       | `Riverpod`                                       | 使用 `Riverpod` 进行响应式和可测试的状态管理。                     |
-| 页面切换       | `PageView.builder` + `PageController`            | 用于垂直滚动流。
-| 数据加载       | 自定义分页逻辑 + 网络层封装         | 实现数据获取的清晰职责分离。                                       |
-| 进度条         | `Slider`                                         | **使用 Flutter `Slider` 实现，结合 `better_player` 事件监听，并支持手势拖动修改进度。**
-| UI 工具包       | Flutter                                          | 遵循 Flutter 的基于 Widget 的架构。
+| 视频播放       | `better_player`                                  | 提供基础播放能力，UI完全自定义。 |
+| 图片显示       | `carousel_slider` + `dots_indicator`             | 实现多图滑动和动画指示器。 |
+| 状态管理       | `Riverpod`                                       | 作为分层架构的核心，负责状态管理和依赖注入。                     |
+| 进度条交互     | Flutter `Slider`                                 | 利用原生 `Slider` 的回调实现流畅、可靠的拖拽体验。 |
 
-### 3.2 代码结构与命名
+## 6. 编码与维护
 
--   **模块化**: 组件应高度模块化和可重用。
--   **命名**: 遵循 Dart/Flutter 命名约定（例如，类使用 `CamelCase`，文件使用 `snake_case`）。
--   **Widget 层次结构**: 保持清晰和逻辑的 Widget 树。
+*   **代码风格**: 严格遵循 `analysis_options.yaml` 中定义的 `flutter_lints` 规则集。
+*   **文档同步**: 在进行任何重构或重要功能变更后，必须同步更新所有相关的产品和技术文档。
+*   **Git 提交规范**: 在执行 `git commit` 前，**必须**遵循以下审查流程：
+    1.  运行 `git status` 确认所有待提交文件已被正确暂存 (`git add`)。
+    2.  运行 `git diff HEAD` 审查所有代码改动的最终内容。
+    3.  基于 `diff` 结果，总结并提议一个清晰、完整的提交信息。
 
-## 4. 模块结构
+## 7. 质量保障与测试策略
 
-项目围绕以下关键模块构建：
+1.  **静态代码分析 (第一道防线)**: 在**每次**代码修改任务（如新增、修改、删除文件）完成后，**必须**立即运行 `flutter analyze` 命令，并解决所有报告的错误或警告。这确保了代码始终符合项目定义的规范，并能及早发现潜在问题。
 
--   **`FeedMediaPageView`**: 主滚动容器 (`PageView.builder`)，管理页面过渡和状态，通过 `Riverpod` 管理媒体数据加载和页面状态。
--   **`FeedMediaItemPage`**: 一个通用内容卡片，**现在是媒体项的中央状态管理器，负责管理 `_currentImageIndex`，并将 `betterPlayerController` 和 `showProgressBar` 等状态传递给 `FeedMediaOverlayUI`。它还负责全屏点击手势的捕获。**
--   **`FeedMediaVideoPlayer`**: 封装 `better_player` 逻辑，根据 `isActive` 状态处理播放、暂停和资源管理，并暴露 `BetterPlayerController`。
--   **`FeedMediaPhotoViewer`**: **纯粹的、无状态的图片轮播组件，不再包含指示器逻辑，通过 `onPageChanged` 回调将页面索引传递给父组件。**
--   **`FeedMediaOverlayUI`**: **现在是所有底部浮层UI元素的统一管理中心，包括图片指示器和视频播放进度条。它接收来自 `FeedMediaItemPage` 的相关数据，并在内部进行布局。**
--   **`FeedMediaProgressBar`**: **其内部使用 `Slider` 实现手势拖动，并根据 `_isDragging` 状态动态调整 `trackHeight`。**
--   **`PlaybackController`**: 一个全局状态管理组件（通过 Riverpod），用于当前播放索引和整体播放状态。
--   **`FeedMediaRepository`**: 管理数据获取、分页和 API 交互，提供模拟数据。
+2.  **单元测试 (Unit Test)**: **必须** 覆盖所有状态逻辑层 (`Notifier`) 和数据层 (`Repository`) 的公共方法，目标覆盖率 > 90%。在测试中 **必须** 使用 Mocking 框架（如 `Mockito`）来模拟依赖项。
 
-## 5. 数据流
+3.  **组件测试 (Widget Test)**: **必须** 为包含复杂交互或多状态UI的组件（如 `FeedMediaLeftActions`, `VideoOverlayController`）编写测试，验证其行为和渲染的正确性。
 
-```mermaid
-graph TD
-  FeedMediaPageView(FeedMedia页面视图) -->|页面改变| PlaybackController(播放控制器)
-  PlaybackController(播放控制器) --> FeedMediaItemPage(媒体项页面)
-  FeedMediaItemPage(媒体项页面) -->|是视频| FeedMediaVideoPlayer(视频播放器)
-  FeedMediaItemPage(媒体项页面) -->|是图片| FeedMediaPhotoViewer(图片查看器)
-  FeedMediaPageView(FeedMedia页面视图) -->|滑动到底| FeedMediaRepository(媒体仓库)
-  FeedMediaRepository(媒体仓库) -->|分页数据| FeedMediaPageView(FeedMedia页面视图)
-  FeedMediaItemPage(媒体项页面) -->|传递状态| FeedMediaOverlayUI(浮层UI)
-  FeedMediaOverlayUI(浮层UI) -->|渲染| FeedMediaProgressBar(视频进度条)
-  FeedMediaOverlayUI(浮层UI) -->|渲染| DotsIndicator(图片指示器)
-```
+4.  **集成测试 (Integration Test)**: **鼓励** 为核心用户流程（如“滑动-播放-暂停-拖拽-点赞”）编写集成测试，以防止功能回归。
 
-## 6. 性能与优化指南
+## 8. 未来技术演进
 
--   **资源管理**:
-    -   限制并发视频播放实例为单个（当前可见页面）。
-    -   确保屏幕外项目的视频播放器资源明确销毁/释放。
-    -   利用 `AutomaticKeepAliveClientMixin` 保持可见页面的状态。
--   **懒加载**: 实现高效的分页，仅在需要时加载内容。
--   **缓存**: 利用 `cached_network_image` 进行图片缓存。未来版本将包含视频缓存。
--   **自定义进度条**: 使用 Flutter `Slider` 结合 `better_player` 的 `addEventsListener` 来更新进度，提供了高度可定制的UI和更稳定的实现，避免了对 `better_player` 内部组件的依赖。**`Slider` 的 `onChanged` 回调仅更新视觉位置，`onChangeEnd` 回调才执行 `seekTo()` 操作，以实现流畅拖动。**
--   **布局抖动**: **`Visibility` Widget 的 `maintainSize`、`maintainAnimation` 和 `maintainState` 属性用于确保 Widget 在不可见时仍占据空间，从而消除布局抖动。**
--   **预加载（高级）**: 对于 V2.0+，实现相邻项目的视频预加载。
--   **流畅滚动**: 目标是 < 16ms 帧延迟。监控和优化 Widget 重建。
+-   **核心抽象**: 将播放器、数据源等核心依赖接口化（`IFeedPlayer`, `IFeedMediaRepository`），实现“可插拔”架构。
+-   **性能与可观测性**: 引入独立的 `CacheManager` 和轻量级的 `PerformanceMonitor` SDK，追求极致性能并建立可观测性体系。
+-   **自动化**: 建立覆盖单元测试、集成测试的自动化CI/CD流水线。
 
-## 7. 质量保证与监控
+## 9. 调试指南与常见问题 (FAQ)
 
--   **关键绩效指标 (KPIs)**:
-    -   首屏加载时间: < 2s
-    -   滚动响应: < 16ms 帧延迟
-    -   播放器切换释放率: > 95%
-    -   图片加载成功率: > 99%
--   **监控**:
-    -   实现视频播放分析（加载时间、播放时间、错误率）。
-    -   跟踪用户交互指标（滚动、点赞、评论）。
-    -   集成崩溃报告和错误日志（例如，Sentry, Firebase Crashlytics）。
+-   **Q: 视频出现黑屏或加载失败？**
+    -   **A:** 首先检查设备网络连接和应用的网络权限。其次，确认视频URL可访问且格式受 `better_player` 支持。最后，通过播放器的事件监听器捕获 `exception` 事件，查看详细的错误日志。
 
-## 8. 依赖项
-
-确保 `pubspec.yaml` 中包含并管理以下关键依赖项：
-
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  better_player: ^0.0.84 # 或最新稳定版本
-  photo_view: ^0.14.0 # 或最新稳定版本
-  cached_network_image: ^3.3.1 # 或最新稳定版本
-  flutter_riverpod: ^2.5.1 # 或最新稳定版本
-  carousel_slider: ^latest_version # 用于多图滑动
-  dots_indicator: ^latest_version # 用于动画指示器
-```
-
-## 9. 未来增强（路线图）
-
--   **V1.1 - 用户交互**: 点赞按钮动画、评论弹窗、静音切换、自动播放下一个。
--   **V1.2 - 播放器增强**: 封面图、加载动画、播放进度条、可选播放速度。
--   **V2.0 - 高性能与商业化**: 自定义预加载、“边播边下”、广告插入、弹幕集成、优化视频缓存。
--   **V2.1 - 多平台与原生**: 视频播放器支持 Web、`ijkPlayer` 集成、本地内容缓存与自动清理。
--   **V3.0+ - 长期演进**: 个性化推荐算法集成、内容创作/上传入口、国际化、暗黑模式 UI 支持、多流类型。
-
-## 10. 编码规范与架构设计要点
-
-### 10.1 编码规范
-
-*   **Dart Linting**: 遵循 `analysis_options.yaml` 中定义的 Lint 规则，推荐使用 `flutter_lints` 或自定义严格的规则集，确保代码风格一致性。
-*   **Widget 拆分**: 保持 Widget 的职责单一。大型 Widget 应拆分为更小、更可复用的无状态 (Stateless) 或有状态 (Stateful) 组件。避免在单个 Widget 中包含过多的业务逻辑或 UI 细节。
-*   **文件与目录结构**: 采用清晰的模块化结构，例如：
-    *   `lib/feed_media/`: 存放 FeedMedia 模块相关的所有代码（UI, 业务逻辑, 模型）。
-*   **注释与文档**:
-    *   所有公共类、方法、属性都应使用 Dart Doc 注释 (`///`) 进行文档说明，清晰描述其功能、参数和返回值。
-    *   复杂逻辑或非显而易见的实现应添加行内注释 (`//`)。
-*   **错误处理**:
-    *   网络请求和异步操作应始终考虑错误处理，使用 `try-catch` 块捕获异常。
-    *   Repository 层可以考虑返回 `Result` 类型（如 `Either<Failure, Success>`）来明确区分成功和失败状态，避免直接抛出异常。
-*   **异步编程**: 熟练使用 `async/await` 处理异步操作，避免回调地狱。合理使用 `Future` 和 `Stream`。
-*   **常量与枚举**: 重要的字符串、数字、路径等应定义为常量。使用枚举 (`enum`) 来表示有限的状态集。
-
-### 10.2 迭代过程中的架构设计要点
-
-*   **可扩展性**:
-    *   **分层架构**: 严格遵循 UI (界面) -> Business Logic (业务逻辑，如 Providers/Notifiers) -> Data (数据，如 Repositories) 的分层，确保各层职责清晰，便于未来功能扩展和团队协作。
-    *   **插件化/模块化**: 考虑将 FeedMedia 作为一个独立的 Flutter 模块或包，便于在其他项目中复用或独立迭代。
-*   **可维护性**:
-    *   **单一职责原则 (SRP)**: 每个类或函数只负责一项功能。
-    *   **依赖倒置原则 (DIP)**: 高层模块不依赖低层模块的具体实现，而是依赖抽象。Riverpod 的 Provider 机制天然支持这一点。
-    *   **代码审查**: 实施严格的代码审查流程，确保代码质量和规范遵循。
-*   **可测试性**:
-    *   **单元测试**: 对业务逻辑层 (Providers, Repositories) 进行充分的单元测试。
-    *   **组件测试**: 对 UI 组件进行组件测试，确保 UI 渲染和交互符合预期。
-    *   **集成测试**: 对关键用户流程进行集成测试，验证端到端的功能。
-    *   **Mocking**: 善用 Mocking 框架（如 `mockito`）隔离依赖，提高测试效率。
-*   **性能优化**:
-    *   **持续监控**: 利用 Flutter DevTools 持续监控帧率、内存使用、CPU 占用，及时发现性能瓶颈。
-    *   **懒加载与按需渲染**: 除了内容懒加载，UI 层面也应考虑按需渲染，例如使用 `Visibility` 或 `Offstage` 控制复杂组件的渲染时机。
-    *   **图片与视频优化**: 确保图片资源大小合适，视频编码高效。
-*   **平台特定能力集成**:
-    *   对于需要原生能力扩展的功能（如 `ijkPlayer` 集成、后台播放），优先考虑使用 `platform_channels` 进行通信，并封装成 Dart 接口，保持 Flutter 层的纯净性。
-    *   设计清晰的平台接口和实现，便于跨平台维护。
-*   **状态管理演进**:
-    *   Riverpod 是一个强大的选择，但随着项目复杂度的增加，可以探索其更高级的用法（如 `Family`, `AutoDispose`, `Notifier`）。
-    *   对于非常复杂的全局状态，可以考虑结合 `GoRouter` 等路由库进行状态管理。
-*   **依赖注入**:
-    *   充分利用 Riverpod 的 Provider 机制进行依赖注入，管理服务、Repository 等实例的生命周期和共享。
-*   **特性开关**:
-    *   对于新功能或实验性功能，考虑引入特性开关机制，便于 A/B 测试、灰度发布和快速回滚。
+-   **Q: 点击按钮时，触发了视频的播放/暂停？**
+    -   **A:** 这是典型的事件冲突。检查 `FeedMediaItemPage` 中的 `Listener` 组件，确认其 `_isClickInInteractiveArea` 方法是否正确计算了所有可交互UI（如按钮、进度条）的区域。确保事件被正确地分发或消费。

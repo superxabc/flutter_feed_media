@@ -5,7 +5,7 @@ import 'package:photo_view/photo_view.dart';
 
 class FeedMediaPhotoViewer extends StatelessWidget {
   final List<String> imageUrls;
-  final void Function(int index) onPageChanged;
+  final void Function(int index) onPageChanged; // 必需的回调
 
   const FeedMediaPhotoViewer({
     super.key,
@@ -43,4 +43,3 @@ class FeedMediaPhotoViewer extends StatelessWidget {
     );
   }
 }
-

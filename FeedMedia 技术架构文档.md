@@ -1,130 +1,76 @@
-# 🛠️ Flutter FeedMedia 技术架构文档
+# FeedMedia 技术架构文档 (V2.0)
 
-## 一、整体技术栈
+## 一、 架构设计原则
 
-| 功能模块       | 技术选型                             |
-|----------------|------------------------------------|
-| 视频播放       | `better_player`                    |
-| 图片浏览       | `photo_view` + `cached_network_image` + `carousel_slider` + `dots_indicator` |
-| 状态管理       | `Riverpod`                         |
-| 页面切换       | `PageView.builder` + `PageController` |
-| 数据加载       | 自定义分页加载 + 网络层封装         |
-| 视频预加载（进阶） | 自定义预加载队列逻辑                 |
-| 进度条         | `Slider`                           |
+本组件的架构遵循以下核心原则，以确保其长期健壮、可维护和可扩展：
 
----
+1.  **单一职责原则 (SRP)**: 每个组件或类只负责一项明确的功能。例如，`VideoOverlayController` 仅负责进度条的UI与交互，而数据获取则完全委托给 `FeedMediaRepository`。
 
-## 二、模块划分
+2.  **依赖倒置原则 (DIP)**: 高层模块不依赖于低层模块的具体实现，而是依赖于抽象。我们通过 `Riverpod` 的 `Provider` 机制实现这一点，例如，UI层依赖的是 `feedMediaProvider` 这个抽象，而非其具体的 `FeedMediaNotifier` 实现。这为未来的单元测试和功能替换（如更换播放器）奠定了基础。
 
-### 1. FeedMediaPageView（滑动容器）
-- 使用 `PageView.builder` 构建上下滑动流  
-- 配合 `PageController` 监听滑动  
-- 控制前后页保活与视频状态切换  
-- 通过 `Riverpod` 管理媒体数据加载和页面状态  
+3.  **分层架构 (Layered Architecture)**: 组件严格划分为三个层次，各层之间单向依赖，确保数据流清晰可控。
 
-### 2. FeedMediaItemPage（内容卡片）
-- 作为单个媒体项的容器，判断内容类型为视频或图片  
-- **现在是媒体项的中央状态管理器，负责管理 `_currentImageIndex`，并将 `betterPlayerController` 和 `showProgressBar` 等状态传递给 `FeedMediaOverlayUI`。**
-- **负责全屏点击手势的捕获，实现视频播放/暂停和长按功能菜单的触发。**
-
-### 3. FeedMediaVideoPlayer
-- 封装 `better_player`，不显示默认控件  
-- 接收 `isActive` 控制播放状态  
-- 生命周期内销毁 / 重建播放器资源  
-- 暴露 `BetterPlayerController` 供外部监听和控制  
-
-### 4. FeedMediaPhotoViewer
-- **纯粹的、无状态的图片轮播组件，不再包含指示器逻辑，通过 `onPageChanged` 回调将页面索引传递给父组件。**
-- 使用 `carousel_slider` 实现多图左右滑动  
-- 搭配 `cached_network_image` 进行本地缓存  
-- 禁用手势放大缩小  
-
-### 5. FeedMediaOverlayUI
-- **现在是所有底部浮层UI元素的统一管理中心，包括图片指示器和视频播放进度条。它接收来自 `FeedMediaItemPage` 的相关数据，并在内部进行布局。**
-- 负责显示视频标题、描述、话题、点赞/评论/分享按钮和音量指示器。
-
-### 6. FeedMediaProgressBar
-- **其内部使用 `Slider` 实现手势拖动，并根据 `_isDragging` 状态动态调整 `trackHeight`。**
-
-### 7. PlaybackController
-- 提供全局播放状态管理：当前播放索引  
-- 由 PageView 通知当前播放页索引  
-
-### 8. FeedMediaRepository
-- 管理网络请求，返回分页内容列表  
-- 封装 APIClient 支持分页 & 错误处理  
-- 提供模拟数据，包含 `id`, `type`, `url`, `title`, `description`, `topics`, `imageUrls` 等字段  
-
----
-
-## 三、数据流架构
+## 二、分层架构详解
 
 ```mermaid
 graph TD
-  FeedMediaPageView -->|onPageChanged| PlaybackController
-  PlaybackController --> FeedMediaItemPage
-  FeedMediaItemPage -->|isVideo| FeedMediaVideoPlayer
-  FeedMediaItemPage -->|isImage| FeedMediaPhotoViewer
-  FeedMediaItemPage -->|传递状态| FeedMediaOverlayUI
-  FeedMediaOverlayUI -->|渲染| FeedMediaProgressBar
-  FeedMediaOverlayUI -->|渲染| DotsIndicator
-  FeedMediaPageView -->|滑动到底| FeedMediaRepository
-  FeedMediaRepository -->|分页数据| FeedMediaPageView
+    subgraph 表现层 (UI Layer)
+        A(FeedMediaPageView)
+        B(FeedMediaItemPage)
+        C(FeedMediaOverlayUI)
+    end
+
+    subgraph 状态逻辑层 (State & Logic Layer)
+        D(feedMediaProvider)
+        E(playbackControllerProvider)
+    end
+
+    subgraph 数据层 (Data Layer)
+        F(FeedMediaRepository)
+    end
+
+    A --> D
+    A --> E
+    B --> E
+    C --> E
+    D --> F
 ```
 
----
+-   **1. 表现层 (UI Layer)**: 负责UI的渲染和用户事件的捕获。此层是“被动”的，它通过监听状态层的变化来更新视图，并将用户交互事件传递给状态逻辑层进行处理。核心组件包括 `FeedMediaPageView`, `FeedMediaItemPage` 等。
 
-## 四、性能优化
+-   **2. 状态逻辑层 (State & Logic Layer)**: 负责处理所有业务逻辑和状态管理。它接收来自表现层的用户事件，执行相应的操作（如请求数据、更新状态），并驱动表现层刷新。此层是整个组件的大脑，核心是 `Riverpod` 的各个 `Notifier`。
 
-- 使用 `AutomaticKeepAliveClientMixin` 保留页面状态  
-- 控制同时播放视频数 ≤ 1（只播放当前页）  
-- 销毁非当前页播放器，释放资源  
-- 预加载前后两页（进阶）  
-- 图片开启缓存，支持占位图与加载失败重试  
-- **自定义进度条**: 使用 Flutter `Slider` 结合 `better_player` 的事件监听，避免了对 `better_player` 内部组件的依赖，提供了更灵活的UI控制和性能优化空间。**`Slider` 的 `onChanged` 回调仅更新视觉位置，`onChangeEnd` 回调才执行 `seekTo()` 操作，以实现流畅拖动。**
-- **布局抖动**: **`Visibility` Widget 的 `maintainSize`、`maintainAnimation` 和 `maintainState` 属性用于确保 Widget 在不可见时仍占据空间，从而消除布局抖动。**
+-   **3. 数据层 (Data Layer)**: 负责数据的获取和持久化。通过 `Repository` 模式将数据来源（网络API、本地数据库、模拟数据）与上层完全隔离。状态逻辑层只与 `FeedMediaRepository` 这个统一的入口交互，不关心数据究竟从何而来。
 
----
+## 三、核心组件的架构定位
 
-## 五、Native 能力扩展（可选）
+-   **`FeedMediaPageView`**: **[UI层]** 顶层容器与页面状态的订阅者。
+-   **`FeedMediaItemPage`**: **[UI层]** 核心协调器，负责组合媒体播放器和浮层UI，并向上层（状态逻辑层）派发手势事件。
+-   **`VideoOverlayController`**: **[UI层]** 一个高度自治的、封装良好的UI子组件，内部管理自身的状态（播放/暂停），不包含任何业务逻辑。
+-   **`feedMediaProvider`**: **[状态逻辑层]** 媒体流数据的状态管理器，负责分页加载、数据缓存等核心业务逻辑。
+-   **`playbackControllerProvider`**: **[状态逻辑层]** 全局播放控制器，确保在任何时候只有一个视频在播放。
+-   **`FeedMediaRepository`**: **[数据层]** 数据源的唯一入口，为状态逻辑层提供统一、干净的数据接口。
 
-| 功能         | 实现方式                        |
-|--------------|--------------------------------|
-| 自定义播放器引擎 | Flutter ↔ Native `ijkPlayer`     |
-| 后台播放     | iOS / Android 平台能力集成        |
-| GPU 滤镜效果 | Flutter Texture + 原生编解码       |
+## 四、未来技术架构演进路线
 
----
+为了支撑更复杂的功能并持续优化非功能性需求（性能、稳定性、可测试性），我们规划了以下技术演进路线：
 
-## 六、异常处理
+### 阶段一：核心抽象与解耦
+- **目标**: 将核心依赖（如播放器、数据源）接口化，实现真正的“可插拔”。
+- **任务**:
+  1.  **播放器API抽象**: 定义一个 `IFeedPlayer` 接口，包含 `play()`, `pause()`, `seekTo()`, `getStream()` 等方法。当前的 `BetterPlayer` 将作为该接口的一个实现。这将使未来替换或新增播放器（如 `ijkplayer`）变得轻而易举。
+  2.  **数据源接口化**: 将 `FeedMediaRepository` 提升为 `IFeedMediaRepository` 接口，使其可以有不同的实现，如 `ApiRepository`, `MockRepository`, `CachedRepository`，极大提升可测试性。
 
-- 视频播放失败：展示封面 & 提示  
-- 网络错误：展示重试按钮  
-- 滑动中断：捕获边界索引或网络未加载逻辑  
+### 阶段二：高性能与可观测性
+- **目标**: 追求极致的性能，并建立完善的可观测性体系。
+- **任务**:
+  1.  **高级缓存策略**: 引入专门的 `CacheManager`，实现更精细的视频预加载和淘汰策略（如 LRU 算法），而不仅仅是依赖播放器自带的缓存。
+  2.  **性能监控 SDK**: 设计一个轻量级的性能监控服务 (`PerformanceMonitor`)，在播放链路的关键节点（如首帧渲染、播放卡顿）进行数据埋点和上报。
+  3.  **渲染优化**: 探索对关键动画（如点赞动画）使用 `CustomPainter` 进行绘制，以减少 Widget 重建，获得更优的性能。
 
----
-
-## 七、依赖包
-
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  better_player: ^0.0.85
-  photo_view: ^0.14.0
-  cached_network_image: ^3.3.1
-  flutter_riverpod: ^2.5.1
-  carousel_slider: ^latest_version # 用于多图滑动
-  dots_indicator: ^latest_version # 用于动画指示器
-```
-
----
-
-## 八、平台兼容性
-
-| 模块     | Android | iOS |
-|----------|---------|-----|
-| 视频播放 | ✅       | ✅   |
-| 图片浏览 | ✅       | ✅   |
-| 滑动容器 | ✅       | ✅   |
-| 状态管理 | ✅       | ✅   |
+### 阶段三：自动化与质量保障
+- **目标**: 建立完善的自动化测试体系，保障代码质量和迭代速度。
+- **任务**:
+  1.  **完善单元测试**: 确保所有 `Notifier` 和 `Repository` 的逻辑覆盖率达到90%以上。
+  2.  **引入集成测试**: 针对核心用户流程（如“滑动-播放-暂停-拖拽-点赞”）编写端到端的集成测试，防止出现功能回归。
+  3.  **建立CI/CD流水线**: 接入 `GitHub Actions` 或 `Jenkins`，实现自动化测试、代码分析、打包和发布流程。

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final playbackControllerProvider = StateNotifierProvider<PlaybackController, int>((ref) {
+final playbackControllerProvider =
+    StateNotifierProvider<PlaybackController, int>((ref) {
   return PlaybackController();
 });
 

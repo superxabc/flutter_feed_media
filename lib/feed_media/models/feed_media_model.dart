@@ -1,4 +1,3 @@
-
 class FeedMediaModel {
   final String id;
   final String type; // 'video' or 'image'

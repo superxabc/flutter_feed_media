@@ -1,4 +1,3 @@
-
 import 'package:flutter_feed_media/feed_media/data/feed_media_repository.dart';
 import 'package:flutter_feed_media/feed_media/models/feed_media_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -66,8 +65,8 @@ class FeedMediaNotifier extends StateNotifier<FeedMediaState> {
   }
 }
 
-
-final feedMediaProvider = StateNotifierProvider<FeedMediaNotifier, FeedMediaState>((ref) {
+final feedMediaProvider =
+    StateNotifierProvider<FeedMediaNotifier, FeedMediaState>((ref) {
   return FeedMediaNotifier(ref.watch(feedMediaRepositoryProvider));
 });
 

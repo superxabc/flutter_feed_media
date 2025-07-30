@@ -7,7 +7,8 @@ class AudioIndicator extends StatefulWidget {
   State<AudioIndicator> createState() => _AudioIndicatorState();
 }
 
-class _AudioIndicatorState extends State<AudioIndicator> with SingleTickerProviderStateMixin {
+class _AudioIndicatorState extends State<AudioIndicator>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override

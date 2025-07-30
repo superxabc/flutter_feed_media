@@ -14,7 +14,8 @@ class FeedMediaBottomInfo extends StatelessWidget {
       children: [
         Text(
           media.title,
-          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+              color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Text(
@@ -35,7 +36,10 @@ class FeedMediaBottomInfo extends StatelessWidget {
                   },
                   child: Text(
                     topic,
-                    style: const TextStyle(color: Colors.blue, fontSize: 14, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        color: Colors.blue,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
               )

@@ -13,8 +13,6 @@ class FeedMediaProgressBar extends StatefulWidget {
 class _FeedMediaProgressBarState extends State<FeedMediaProgressBar> {
   Duration _currentPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
-  bool _isDragging = false; // New state variable
-  double _dragValue = 0.0; // Store value during drag
 
   @override
   void initState() {
@@ -35,38 +33,41 @@ class _FeedMediaProgressBarState extends State<FeedMediaProgressBar> {
 
   @override
   void dispose() {
-    widget.controller.removeEventsListener(_onPlayerEvent);
+    try {
+      widget.controller.removeEventsListener(_onPlayerEvent);
+    } catch (e) {
+      debugPrint('Error removing progress bar event listener: $e');
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    double progress = _totalDuration.inMilliseconds > 0 ? _currentPosition.inMilliseconds / _totalDuration.inMilliseconds : 0.0;
+    double progress = _totalDuration.inMilliseconds > 0
+        ? _currentPosition.inMilliseconds / _totalDuration.inMilliseconds
+        : 0.0;
 
-    return SliderTheme(
-      data: SliderTheme.of(context).copyWith(
-        trackHeight: _isDragging ? 4.0 : 2.0, // Dynamic track height
-        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
-        overlayShape: const RoundSliderOverlayShape(overlayRadius: 12.0),
-        activeTrackColor: Colors.red,
-        inactiveTrackColor: Colors.white.withOpacity(0.5),
-        thumbColor: Colors.red,
-      ),
-      child: Slider(
-        value: _isDragging ? _dragValue : progress, // Use dragValue during drag
-        onChanged: (value) {
-          setState(() {
-            _isDragging = true;
-            _dragValue = value;
-          });
-        },
-        onChangeEnd: (value) {
-          final seekTo = _totalDuration * value;
-          widget.controller.seekTo(seekTo);
-          setState(() {
-            _isDragging = false;
-          });
-        },
+    return SizedBox(
+      height: 20.0,
+      child: SliderTheme(
+        data: SliderTheme.of(context).copyWith(
+          trackHeight: 3.0,
+          thumbShape:
+              const RoundSliderThumbShape(enabledThumbRadius: 0.0), // 移除小圆球
+          overlayShape:
+              const RoundSliderOverlayShape(overlayRadius: 0.0), // 移除外圈
+          activeTrackColor: Colors.white, // 修改为白色进度
+          inactiveTrackColor: Colors.white.withOpacity(0.3), // 降低背景透明度
+          thumbColor: Colors.transparent, // 透明拖拽点
+          overlayColor: Colors.transparent,
+        ),
+        child: IgnorePointer(
+          // 忽略所有手势，纯展示用
+          child: Slider(
+            value: progress.clamp(0.0, 1.0),
+            onChanged: null, // 禁用交互
+          ),
+        ),
       ),
     );
   }
